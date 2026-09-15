@@ -1,0 +1,92 @@
+# tiny-llm-router
+
+> Zero-dependency model router for Python AI agents. Role-based picking, cost caps, latency guards, circuit-breakers. Single file, MIT.
+
+- Version: 0.1.0
+- License: MIT
+- Repository: https://github.com/hussain-alsaibai/tiny-llm-router
+- Language: Python (3.8+)
+- Runtime dependencies: 0
+- Install: `pip install tiny-llm-router` (or copy `tiny_llm_router.py`)
+- Docs: README.md, `pyproject.toml`, `benchmark.py`, `test_tiny_llm_router.py`
+
+## What this library does
+
+Routes a `Task` (role, prompt metadata, image flag, latency budget) to one of N
+LLM model names based on role rules, cost caps, observed latency, and a
+circuit-breaker on flaky providers. Maintains rolling statistics and integrates
+with `tiny-llm` via `make_tiny_llm_adapter(router, tiny_llm_module)`.
+
+## When to use it
+
+- You call 2+ LLM models and want consistent routing logic.
+- You want cost caps per role (don't blow budget on chat, but allow o1 for think).
+- You want auto-failover when a provider has N errors in T seconds.
+- You want role-based cost attribution for agents (chat vs think vs vision).
+- You want zero-dep, single-file library.
+
+## When NOT to use it
+
+- You only use one model.
+- You need transformer-based learned routing (use Aviary / NotDiamond).
+- You need LLM-side guardrails (use NeMo Guard / Llama Guard).
+
+## Public API
+
+- `Task(role, prompt, has_images, estimated_input_tokens, needs_json, latency_budget_ms, metadata)`
+- `RoleRule(role, model, max_cost_per_1k, max_latency_p95_ms, only_if)`
+- `Router(rules, fallback, pricing, failure_window_s, failure_threshold)`
+- `router.pick(task) -> model_name` (raises `RoutingError`)
+- `router.record(model, latency_ms, cost_usd, errored=False)` — update stats
+- `router.stats(model=None) -> dict`
+- `router.is_healthy(model) -> bool`
+- `infer_role(task) -> str` — heuristic inference (code, vision, json, long, default)
+- `make_tiny_llm_adapter(router, tiny_llm_module) -> Adapter` with `.chat_auto(task)`
+
+## Code example
+
+```python
+from tiny_llm_router import Router, RoleRule, Task
+
+router = Router([
+    RoleRule("code",    "gpt-4o-mini", max_cost_per_1k=0.5),
+    RoleRule("think",   "o1-mini"),
+    RoleRule("vision",  "gpt-4o"),
+    RoleRule("long",    "gemini-2.5-flash"),
+    RoleRule("json",    "haiku"),
+    RoleRule("default", "gpt-4o-mini"),
+], fallback="haiku")
+
+model = router.pick(Task(role="code", prompt="def fib(n): ..."))
+# => "gpt-4o-mini"
+
+# Auto-route via tiny-llm
+import tiny_llm
+adapter = make_tiny_llm_adapter(router, tiny_llm)
+resp = adapter.chat_auto(Task(role="think", prompt="prove sqrt(2) irrational"))
+```
+
+## Integration with the tiny-* ecosystem
+
+- Above `tiny-llm` — picks which model to dispatch to.
+- Beside `tiny-cost` and `tiny-budget` — provides per-model cost attribution.
+- Below `tiny-workflow-engine` — each step declares its own role.
+- Inputs from `tiny-config` — load model/pricing tables from YAML.
+
+## Compatibility
+
+- Python 3.8 – 3.13 confirmed.
+- No C extensions. No native deps.
+- Thread-safe via single internal lock.
+
+## Common pitfalls
+
+1. `task.role` is optional; default `"default"` triggers heuristic inference.
+2. Cost caps require a `pricing=` table on Router; otherwise cap is a no-op.
+3. Circuit-breaker window is wall-clock; bursty traffic resets per `failure_window_s`.
+4. Recorded stats persist in-process; restart loses them (intentional — no I/O).
+
+## Changelog
+
+- 0.1.0 — initial release: role rules, cost caps, latency guards, circuit-breakers,
+  tiny-llm adapter, heuristic inference.
