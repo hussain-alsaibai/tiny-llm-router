@@ -3,7 +3,8 @@
 > **Zero-dependency model router for Python AI agents.** Pick the right model per role — fast for chat, deep for think, vision-capable for images — with cost caps, latency guards, and circuit-breakers. One file. MIT.
 
 ```bash
-pip install tiny-llm-router
+# From GitHub (recommended -- not yet on PyPI)
+pip install git+https://github.com/hussain-alsaibai/tiny-llm-router.git
 # or: copy tiny_llm_router.py into your project
 ```
 
