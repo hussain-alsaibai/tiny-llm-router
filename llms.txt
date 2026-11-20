@@ -7,7 +7,9 @@
 - Repository: https://github.com/hussain-alsaibai/tiny-llm-router
 - Language: Python (3.8+)
 - Runtime dependencies: 0
-- Install: `pip install tiny-llm-router` (or copy `tiny_llm_router.py`)
+- Install: `pip install "tiny-llm-router @ git+https://github.com/hussain-alsaibai/tiny-llm-router.git"`
+  (or copy `tiny_llm_router.py`). This project is **unpublished** on PyPI --
+  the name `tiny-llm-router` is not on the index, so the bare form 404s.
 - Docs: README.md, `pyproject.toml`, `benchmark.py`, `test_tiny_llm_router.py`
 
 ## What this library does
